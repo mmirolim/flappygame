@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
-	img "github.com/veandco/go-sdl2/sdl_image"
 	ttf "github.com/veandco/go-sdl2/sdl_ttf"
 )
 
@@ -34,19 +33,27 @@ func run(w, h int) error {
 
 	defer window.Destroy()
 
-	err = drawBackground(r)
+	s, err := newScene(r)
 	if err != nil {
 		return err
 	}
-
-	time.Sleep(2 * time.Second)
 
 	err = drawTitle("Adventure Time", 20, r)
 	if err != nil {
 		return err
 	}
+	time.Sleep(1 * time.Second)
+	for i := 0; i < 100; i++ {
+		err = s.paint(r)
 
-	time.Sleep(3 * time.Second)
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	s.destroy()
 
 	return nil
 }
@@ -68,23 +75,6 @@ func drawTitle(txt string, size int, r *sdl.Renderer) error {
 		return err
 	}
 	defer t.Destroy()
-
-	err = r.Copy(t, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	r.Present()
-
-	return nil
-}
-
-func drawBackground(r *sdl.Renderer) error {
-	r.Clear()
-	t, err := img.LoadTexture(r, "res/imgs/bg.png")
-	if err != nil {
-		return err
-	}
 
 	err = r.Copy(t, nil, nil)
 	if err != nil {
