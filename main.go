@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"runtime"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -9,53 +10,63 @@ import (
 )
 
 func main() {
-	log.Fatal(run(800, 400))
-}
+	runtime.LockOSThread() // required by
 
-func run(w, h int) error {
+	w, h := 800, 600
 	err := sdl.Init(sdl.INIT_EVERYTHING)
-	if err != nil {
-		return err
-	}
+	exitOnErr(err, "sdl init")
 
 	defer sdl.Quit()
 
 	err = ttf.Init()
-	if err != nil {
-		return err
-	}
+	exitOnErr(err, "ttf init")
+
 	defer ttf.Quit()
 
 	window, r, err := sdl.CreateWindowAndRenderer(w, h, sdl.WINDOW_SHOWN)
-	if err != nil {
-		return err
-	}
+	exitOnErr(err, "create window and renderer")
 
 	defer window.Destroy()
 
 	s, err := newScene(r)
-	if err != nil {
-		return err
-	}
+	exitOnErr(err, "new scene err")
 
 	err = drawTitle("Adventure Time", 20, r)
-	if err != nil {
-		return err
-	}
-	time.Sleep(1 * time.Second)
-	for i := 0; i < 100; i++ {
-		err = s.paint(r)
+	exitOnErr(err, "drawTitle")
 
-		if err != nil {
-			return err
+	nextWorldTime := time.Tick(10 * time.Millisecond)
+	events := make(chan sdl.Event)
+	go func() {
+		for {
+			events <- sdl.WaitEvent()
 		}
 
-		time.Sleep(300 * time.Millisecond)
+	}()
+
+GAME_LOOP:
+	for {
+
+		select {
+		case e := <-events:
+			switch v := e.(type) {
+			case *sdl.KeyUpEvent:
+				s.ufo.lift()
+			case *sdl.QuitEvent:
+				break GAME_LOOP
+			default:
+				// fmt.Printf("EVENT %T\n", v) // output for debug
+
+			}
+		case <-nextWorldTime:
+			if err := s.paint(r); err != nil {
+				log.Fatal("paint error", err)
+			}
+		}
+
 	}
 
 	s.destroy()
-
-	return nil
+	log.Println("bye bye exiting")
 }
 
 func drawTitle(txt string, size int, r *sdl.Renderer) error {
